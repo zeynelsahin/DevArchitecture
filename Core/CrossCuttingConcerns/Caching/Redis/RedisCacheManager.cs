@@ -1,72 +1,104 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using ServiceStack.Caching;
 using ServiceStack.Redis;
 
 namespace Core.CrossCuttingConcerns.Caching.Redis
 {
-    /// <summary>
-    /// RedisCacheManager
-    /// </summary>
-    public class RedisCacheManager : ICacheManager
-    {
-        private readonly RedisEndpoint _redisEndpoint;
+	/// <summary>
+	/// RedisCacheManager
+	/// </summary>
+	public class RedisCacheManager : ICacheManager
+	{
+		private readonly RedisEndpoint _redisEndpoint;
+		private readonly IRedisClientsManagerAsync _manager;		
 
-        public RedisCacheManager()
-        {
-            _redisEndpoint = new RedisEndpoint("localhost", 6379);
-        }
+		public RedisCacheManager(IRedisClientsManagerAsync manager)
+		{
+			_redisEndpoint = new RedisEndpoint("localhost", 6379);
+			_manager = manager;
+			
+		}
 
-        public T Get<T>(string key)
-        {
-            var result = default(T);
-            RedisInvoker(x => { result = x.Get<T>(key); });
-            return result;
-        }
+		public async Task<T> Get<T>(string key)
+		{			
+			await using var client = await _manager.GetClientAsync();
+			var result = await client.GetAsync<T>(key);
+			return result;
+		}
 
-        public object Get(string key)
-        {
-            var result = default(object);
-            RedisInvoker(x => { result = x.Get<object>(key); });
-            return result;
-        }
+		public async Task<object> Get(string key)
+		{
+			await using var client = await _manager.GetClientAsync();
+			var result = await client.GetAsync<IEnumerable<string>>(key);
+			return result;
+		}
 
-        public void Add(string key, object data, int duration)
-        {
-            RedisInvoker(x => x.Add(key, data, TimeSpan.FromMinutes(duration)));
-        }
+		public async Task Add(string key, object data, int duration)
+		{
+			try
+			{
+				await using var client = await _manager.GetClientAsync();
 
-        public void Add(string key, object data)
-        {
-            RedisInvoker(x => x.Add(key, data));
-        }
+				var asd = await client.AddAsync(key, data, TimeSpan.FromMinutes(duration));
+			}
+			catch (Exception ex)
+			{
 
-        public bool IsAdd(string key)
-        {
-            var isAdded = false;
-            RedisInvoker(x => isAdded = x.ContainsKey(key));
-            return isAdded;
-        }
+				throw;
+			}
+			
+		}
 
-        public void Remove(string key)
-        {
-            RedisInvoker(x => x.Remove(key));
-        }
+		public async Task Add(string key, object data)
+		{
+			try
+			{
+				await using var client = await _manager.GetClientAsync();
+				await client.AddAsync(key, data);
+			}
+			catch (Exception ex )
+			{
 
-        public void RemoveByPattern(string pattern)
-        {
-            RedisInvoker(x => x.RemoveByPattern(pattern));
-        }
+				throw;
+			}
+	
+		}
 
-        public void Clear()
-        {
-            RedisInvoker(x => x.FlushAll());
-        }
+		public async Task<bool> IsAdd(string key)
+		{
+			var isAdded = false;
+			await using var client = await _manager.GetClientAsync();
+			isAdded=await client.ContainsKeyAsync(key);			
+			return isAdded;
+		}
 
-        private void RedisInvoker(Action<RedisClient> redisAction)
-        {
-            using (var client = new RedisClient(_redisEndpoint))
-            {
-                redisAction.Invoke(client);
-            }
-        }
-    }
+		public async Task Remove(string key)
+		{
+			await using var client = await _manager.GetClientAsync();
+			await client.RemoveAsync(key);
+		}
+
+		public async Task RemoveByPattern(string pattern)
+		{
+			await using var client = await _manager.GetClientAsync();
+			await client.RemoveByPatternAsync(pattern);			
+		}
+
+		public async Task Clear()
+		{
+			await using var client = await _manager.GetClientAsync();
+			await client.FlushAllAsync();
+		}
+
+		//private void RedisInvoker(Action<RedisClient> redisAction)
+		//{
+		//	using (var client = new RedisClient(_redisEndpoint))
+		//	{
+		//		redisAction.Invoke(client);
+		//	}
+		//}
+	}
 }
