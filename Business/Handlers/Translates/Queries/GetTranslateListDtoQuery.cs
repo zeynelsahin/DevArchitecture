@@ -30,7 +30,7 @@ namespace Business.Handlers.Translates.Queries
 
             [SecuredOperation(Priority = 1)]
             [PerformanceAspect(5)]
-            [CacheAspect(10)]
+            [CacheAspect(10, typeof(IDataResult<IEnumerable<TranslateDto>>))]
             [LogAspect(typeof(FileLogger))]
             public async Task<IDataResult<IEnumerable<TranslateDto>>> Handle(GetTranslateListDtoQuery request, CancellationToken cancellationToken)
             {

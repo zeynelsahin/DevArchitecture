@@ -49,7 +49,8 @@ namespace Business.Handlers.OperationClaims.Queries
                     throw new SecurityException(Messages.AuthorizationsDenied);
                 }
 
-                var oprClaims = _cacheManager.Get($"{CacheKeys.UserIdForClaim}={userId}") as IEnumerable<string>;
+                //var oprClaims = _cacheManager.Get($"{CacheKeys.UserIdForClaim}={userId}") as IEnumerable<string>;
+                var oprClaims = await _cacheManager.Get<IEnumerable<string>>($"{CacheKeys.UserIdForClaim}={userId}");
 
                 return new SuccessDataResult<IEnumerable<string>>(oprClaims);
             }

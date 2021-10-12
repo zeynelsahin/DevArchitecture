@@ -32,7 +32,7 @@ namespace Core.CrossCuttingConcerns.Caching.Redis
 		public async Task<object> Get(string key)
 		{
 			await using var client = await _manager.GetClientAsync();
-			var result = await client.GetAsync<IEnumerable<string>>(key);
+			var result = await client.GetAsync<object>(key);
 			return result;
 		}
 
